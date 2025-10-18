@@ -1,5 +1,5 @@
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'openrouter/cinematika-7b';
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "openrouter/cinematika-7b";
 
 export interface RoadmapRequest {
   goal: string;
@@ -39,40 +39,46 @@ Respond in GitHub Flavored Markdown with the following structure:
 Keep the tone confident and inspiring but specific. Avoid generic advice.
 Do not include code fences around the response.`;
 
-export async function createRoadmap(request: RoadmapRequest, apiKey?: string): Promise<RoadmapResult> {
+export async function createRoadmap(
+  request: RoadmapRequest,
+  apiKey?: string,
+): Promise<RoadmapResult> {
   const started = performance.now();
   const key = apiKey ?? import.meta.env.VITE_OPENROUTER_API_KEY;
 
-  const userPrompt = `Skill or focus: ${request.goal}\nBackground: ${request.background || 'no prior experience shared'}\nConstraints: ${request.constraints || 'none mentioned'}\n\nReturn the roadmap described in the system message.`;
+  const userPrompt = `Skill or focus: ${request.goal}\nBackground: ${request.background || "no prior experience shared"}\nConstraints: ${request.constraints || "none mentioned"}\n\nReturn the roadmap described in the system message.`;
 
   if (!key) {
-    return createFallbackRoadmap(request, 'missing-api-key');
+    return createFallbackRoadmap(request, "missing-api-key");
   }
 
   try {
     const response = await fetch(OPENROUTER_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${key}`,
-        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173',
-        'X-Title': 'VibeRoad'
+        "HTTP-Referer":
+          typeof window !== "undefined"
+            ? window.location.origin
+            : "http://localhost:5173",
+        "X-Title": "VibeRoad",
       },
       body: JSON.stringify({
         model: DEFAULT_MODEL,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
         temperature: 0.5,
         top_p: 0.9,
-        max_tokens: 1100
-      })
+        max_tokens: 1100,
+      }),
     });
 
     if (!response.ok) {
       const detail = await response.text();
-      console.error('OpenRouter error', response.status, detail);
+      console.error("OpenRouter error", response.status, detail);
       return createFallbackRoadmap(request, `http-error-${response.status}`);
     }
 
@@ -80,24 +86,29 @@ export async function createRoadmap(request: RoadmapRequest, apiKey?: string): P
     const content: string | undefined = payload?.choices?.[0]?.message?.content;
 
     if (!content) {
-      return createFallbackRoadmap(request, 'no-content');
+      return createFallbackRoadmap(request, "no-content");
     }
 
     return {
       planMarkdown: content.trim(),
       usedModel: payload?.model ?? DEFAULT_MODEL,
       latencyMs: performance.now() - started,
-      isFallback: false
+      isFallback: false,
     };
   } catch (error) {
-    console.error('Failed to reach OpenRouter', error);
-    return createFallbackRoadmap(request, 'network-error');
+    console.error("Failed to reach OpenRouter", error);
+    return createFallbackRoadmap(request, "network-error");
   }
 }
 
-function createFallbackRoadmap(request: RoadmapRequest, reason: string): RoadmapResult {
+function createFallbackRoadmap(
+  request: RoadmapRequest,
+  reason: string,
+): RoadmapResult {
   const goal = request.goal.trim();
-  const title = goal ? goal[0].toUpperCase() + goal.slice(1) : 'Your Chosen Skill';
+  const title = goal
+    ? goal[0].toUpperCase() + goal.slice(1)
+    : "Your Chosen Skill";
 
   const fallbackPlan = `# Mastery Roadmap for ${title}
 - **Time Horizon**: 3-6 months of consistent, focused effort.
@@ -149,6 +160,6 @@ function createFallbackRoadmap(request: RoadmapRequest, reason: string): Roadmap
     planMarkdown: fallbackPlan,
     usedModel: `fallback-${reason}`,
     latencyMs: 0,
-    isFallback: true
+    isFallback: true,
   };
 }
